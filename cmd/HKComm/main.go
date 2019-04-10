@@ -1,38 +1,54 @@
 package HKComm
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/jinzhu/gorm"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/sessions"
 	_ "github.com/mattn/go-sqlite3"
 	"gopkg.in/go-playground/validator.v9"
+	"os"
+	"strings"
 )
 
 func CreateSuperUser() (err error) {
 	user := User{}
 	fmt.Printf("Please enter username (default: HKComm):")
-	if _, err = fmt.Scanln(&user.UserName); err != nil {
+	inputReader := bufio.NewReader(os.Stdin)
+	var str string
+	if str, err = inputReader.ReadString('\n'); err != nil {
 		return
 	}
+	str = strings.Trim(str, "\r\n")
+	if str == "" {
+		str = "HKComm"
+	}
+	user.UserName = str
 	var tmpPassword1 string
 	fmt.Printf("Please enter password:")
-	if _, err = fmt.Scanln(&tmpPassword1); err != nil {
+	if tmpPassword1, err = inputReader.ReadString('\n'); err != nil {
 		return
 	}
+	tmpPassword1 = strings.Trim(tmpPassword1, "\r\n")
 	var tmpPassword2 string
 	fmt.Printf("Please enter password again:")
-	if _, err = fmt.Scanln(&tmpPassword2); err != nil {
+	if tmpPassword2, err = inputReader.ReadString('\n'); err != nil {
 		return
 	}
+	tmpPassword2 = strings.Trim(tmpPassword2, "\r\n")
 	if tmpPassword1 != tmpPassword2 {
 		return fmt.Errorf("create super user: the password is not same")
 	}
 	user.PassWord = tmpPassword1
 	fmt.Printf("Please enter email:")
-	if _, err = fmt.Scanln(&user.Email); err != nil {
+	if user.Email, err = inputReader.ReadString('\n'); err != nil {
 		return
 	}
+	user.Email = strings.Trim(user.Email, "\r\n")
+	fmt.Println(user.UserName)
+	fmt.Println(user.PassWord)
+	fmt.Println(user.Email)
 	vali := validator.New()
 	if err = vali.Struct(&user); err != nil {
 		return
@@ -51,6 +67,7 @@ func CreateSuperUser() (err error) {
 
 func InitDatabase() (err error) {
 	db, err := gorm.Open("sqlite3", "db.sqlite3")
+	db.SingularTable(true)
 	defer func() {
 		if err := db.Close(); err != nil {
 			panic(err)
@@ -91,7 +108,7 @@ func Server()  {
 		sqlUser := User{
 			PassWord: "",
 		}
-		checkError(db.Where("username = ?", formUser.UserName).Find(&sqlUser).Error)
+		checkError(db.Where("user_name = ?", formUser.UserName).Find(&sqlUser).Error)
 		if sqlUser.PassWord == "" {
 			ctx.JSON(iris.Map{
 				"status":  iris.StatusOK,
