@@ -5,7 +5,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/sessions"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"gopkg.in/go-playground/validator.v9"
 )
 
@@ -33,6 +33,7 @@ func CreateSuperUser() (err error) {
 	if _, err = fmt.Scanln(&user.Email); err != nil {
 		return
 	}
+	user.Email = strings.Trim(user.Email, "\r\n")
 	vali := validator.New()
 	if err = vali.Struct(&user); err != nil {
 		return
@@ -69,74 +70,30 @@ func InitDatabase() (err error) {
 func Server()  {
 	app := iris.Default()
 
-	sess := sessions.New(sessions.Config{
+	var err error
+
+	sess = sessions.New(sessions.Config{
 		Cookie:       "HKCommSession",
 		Expires:      -1,
 		AllowReclaim: true,
 	})
 
-	db, err := gorm.Open("sqlite3", "db.sqlite3")
+	db, err = gorm.Open("sqlite3", "db.sqlite3")
 	checkError(err)
 	defer db.Close()
 	db.SingularTable(true)
 
-	app.Post("/login", func(ctx iris.Context) {
-		s := sess.Start(ctx)
-		formUser := User{}
-		checkError(ctx.ReadForm(&formUser))
-		vali := validator.New()
-		if err := vali.Struct(&formUser); err != nil {
-			panic(err)
-		}
-		sqlUser := User{
-			PassWord: "",
-		}
-		checkError(db.Where("username = ?", formUser.UserName).Find(&sqlUser).Error)
-		if sqlUser.PassWord == "" {
-			ctx.JSON(iris.Map{
-				"status":  iris.StatusOK,
-				"code":    UserNotFoundOrPasswordError,
-				"message": Msg[UserNotFoundOrPasswordError],
-			})
-			return
-		} else if sqlUser.PassWord == formUser.PassWord {
-			ctx.JSON(iris.Map{
-				"status":  iris.StatusOK,
-				"code":    OK,
-				"message": Msg[OK],
-			})
-			return
-		}
-		s.Set("userid", sqlUser.ID)
-		s.Set("authenticated", true)
-	})
+	app.Post("/login", login)
 
-	app.Post("/logout", func(ctx iris.Context) {
-		s := sess.Start(ctx)
-		s.Clear()
-		ctx.JSON(iris.Map{
-			"status":  iris.StatusOK,
-			"code":    OK,
-			"message": Msg[OK],
-		})
-		ctx.StatusCode(iris.StatusOK)
-	})
+	app.Post("/logout", logout)
 
-	app.Get("/secret", func(ctx iris.Context) {
-
-		// Check if user is authenticated
-		if auth, _ := sess.Start(ctx).GetBoolean("authenticated"); !auth {
-			ctx.StatusCode(iris.StatusForbidden)
-			return
-		}
-
-		// Print secret message
-		ctx.WriteString("The cake is a lie!")
-	})
+	app.Get("/secret", secret)
 
 	app.Get("/ping", func(ctx iris.Context) {
-		ctx.WriteString("Welcome!")
+		ctx.WriteString("pong")
 	})
+
+	app.Post("/register", register)
 
 	app.Run(iris.Addr(":8080"))
 }

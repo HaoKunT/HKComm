@@ -1,6 +1,10 @@
 package HKComm
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/jinzhu/gorm"
+	"github.com/kataras/iris/sessions"
+)
 
 
 /*
@@ -20,7 +24,8 @@ var Msg = map[int]string{
 	UserNotFoundOrPasswordError: "user not found or wrong password!",
 }
 
-
+var db *gorm.DB
+var sess *sessions.Sessions
 
 func checkError(err error) {
 	if err != nil {
