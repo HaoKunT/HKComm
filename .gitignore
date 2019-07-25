@@ -13,3 +13,4 @@
 
 .idea
 *.sqlite3
+*.conf

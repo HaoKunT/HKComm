@@ -1,18 +1,22 @@
-package HKComm
+package hkcomm
 
 import (
 	"bufio"
 	"fmt"
-	"github.com/jinzhu/gorm"
-	"github.com/kataras/iris"
-	"github.com/kataras/iris/sessions"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"gopkg.in/go-playground/validator.v9"
 	"os"
 	"strings"
+
+	"github.com/howeyc/gopass"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/kataras/iris"
+	"github.com/kataras/iris/sessions"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 func CreateSuperUser() (err error) {
+	defer func() {
+		SafeExit()
+	}()
 	user := User{}
 	fmt.Printf("Please enter username (default: HKComm):")
 	inputReader := bufio.NewReader(os.Stdin)
@@ -25,22 +29,22 @@ func CreateSuperUser() (err error) {
 		str = "HKComm"
 	}
 	user.UserName = str
-	var tmpPassword1 string
+	var tmpPassword1 []byte
 	fmt.Printf("Please enter password:")
-	if tmpPassword1, err = inputReader.ReadString('\n'); err != nil {
+	if tmpPassword1, err = gopass.GetPasswd(); err != nil {
 		return
 	}
-	tmpPassword1 = strings.Trim(tmpPassword1, "\r\n")
-	var tmpPassword2 string
+	var tmpPassword2 []byte
 	fmt.Printf("Please enter password again:")
-	if tmpPassword2, err = inputReader.ReadString('\n'); err != nil {
+	if tmpPassword2, err = gopass.GetPasswd(); err != nil {
 		return
 	}
-	tmpPassword2 = strings.Trim(tmpPassword2, "\r\n")
-	if tmpPassword1 != tmpPassword2 {
+	s_tmpPassword1 := string(tmpPassword1)
+	s_tmpPassword2 := string(tmpPassword2)
+	if s_tmpPassword1 != s_tmpPassword2 {
 		return fmt.Errorf("create super user: the password is not same")
 	}
-	user.PassWord = tmpPassword1
+	user.PassWord = s_tmpPassword1
 	fmt.Printf("Please enter email:")
 	if user.Email, err = inputReader.ReadString('\n'); err != nil {
 		return
@@ -50,40 +54,25 @@ func CreateSuperUser() (err error) {
 	if err = vali.Struct(&user); err != nil {
 		return
 	}
-	db, err := gorm.Open("sqlite3", "db.sqlite3")
-	defer func() {
-		if err = db.Close(); err != nil {
-			panic(err)
-		}
-	}()
-	if err != nil {
-		return err
-	}
 	return db.Create(&user).Error
 }
 
 func InitDatabase() (err error) {
-	db, err := gorm.Open("sqlite3", "db.sqlite3")
-	db.SingularTable(true)
 	defer func() {
-		if err := db.Close(); err != nil {
-			panic(err)
-		}
+		SafeExit()
 	}()
-	if err != nil {
-		return
-	}
-	if db.HasTable(&User{}) {
-		fmt.Println("Table user is exists!")}
-	db.AutoMigrate(&User{})
+	db.Debug().AutoMigrate(&User{}, &Group{}, &File{}, &communicationData{})
 	fmt.Println("Init database sucessful")
 	return nil
 }
 
-func Server()  {
+func Server() {
+	loadSDB()
+	loadDB()
+	defer func() {
+		SafeExit()
+	}()
 	app := iris.Default()
-
-	var err error
 
 	sess = sessions.New(sessions.Config{
 		Cookie:       "HKCommSession",
@@ -91,22 +80,35 @@ func Server()  {
 		AllowReclaim: true,
 	})
 
-	db, err = gorm.Open("sqlite3", "db.sqlite3")
-	checkError(err)
-	defer db.Close()
 	db.SingularTable(true)
+
+	setUpWebsocket(app)
+
+	msgCh()
+
+	needAuth := app.Party("/", auth)
 
 	app.Post("/login", login)
 
 	app.Post("/logout", logout)
 
-	app.Get("/secret", secret)
+	needAuth.Get("/secret", secret)
 
 	app.Get("/ping", func(ctx iris.Context) {
 		ctx.WriteString("pong")
 	})
 
 	app.Post("/register", register)
+
+	needAuth.Get("/search/id/{userid:uint}", SearchID)
+
+	needAuth.Get("/search/username/{username:string max(255)}", SearchName)
+
+	//app.Post("/addfriend/{friendid:uint}", auth, AddFriend)
+
+	needAuth.Get("/init/history-cds", getNew100)
+
+	needAuth.Post("/upload", uploadFile)
 
 	app.Run(iris.Addr(":8080"))
 }

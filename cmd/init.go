@@ -15,7 +15,7 @@ var initCmd = &cobra.Command{
 	Short: "Init database",
 	Long: "Init database which HKComm need.",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := HKComm.InitDatabase(); err != nil {
+		if err := hkcomm.InitDatabase(); err != nil {
 			fmt.Println(err)
 		}
 	},

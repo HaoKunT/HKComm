@@ -15,7 +15,7 @@ import (
  	Short: "This command is used to create a super user",
  	Long: "This command is used to create a super user, it happened after you init your database",
  	Run: func(cmd *cobra.Command, args []string) {
-		if err := HKComm.CreateSuperUser(); err != nil {
+		if err := hkcomm.CreateSuperUser(); err != nil {
 			fmt.Println(err)
 		}
 	},
