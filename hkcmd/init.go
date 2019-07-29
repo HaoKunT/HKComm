@@ -1,4 +1,4 @@
-package cmd
+package hkcmd
 
 /*
 	Init the database
@@ -7,7 +7,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"./HKComm"
+	"hkcomm"
 )
 
 var initCmd = &cobra.Command{

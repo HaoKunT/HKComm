@@ -1,4 +1,4 @@
-package cmd
+package hkcmd
 
 /*
 	This is HKComm Server
@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/kataras/iris"
 	"github.com/spf13/cobra"
-	"./HKComm"
+	"hkcomm"
 )
 
 func Execute()  {

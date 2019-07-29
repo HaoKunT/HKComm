@@ -3,7 +3,7 @@
 * @Date: 2019/7/24 6:43
 * @File: pprof.go
 */
-package cmd
+package hkcmd
 
 import (
 	"github.com/spf13/cobra"

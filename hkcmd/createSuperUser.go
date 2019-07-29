@@ -1,9 +1,9 @@
-package cmd
+package hkcmd
 
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"./HKComm"
+	"hkcomm"
 )
 
 /*

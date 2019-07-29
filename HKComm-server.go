@@ -1,7 +1,7 @@
 package main
 
-import "./cmd"
+import "hkcmd"
 
 func main() {
-	cmd.Execute()
+	hkcmd.Execute()
 }
